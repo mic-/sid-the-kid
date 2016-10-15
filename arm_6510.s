@@ -42,7 +42,6 @@
 .equ FLAG_V, 0x40
 .equ FLAG_N, 0x80
 
-
 @ I currently don't keep a cycle count, as I decided that I could make better
 @ use of the ARM registers for other purposes. Instead, I just let the SID's
 @ INIT/PLAY routine run until it returns.
@@ -108,12 +107,14 @@
 .macro ZPX_ADDR dest
 	ZP_ADDR \dest
 	add \dest,\dest,r6
+    and \dest,\dest,#0xFF
 .endm
 
 @ zp,Y
 .macro ZPY_ADDR dest
 	ZP_ADDR \dest
 	add 	\dest,\dest,r7
+    and \dest,\dest,#0xFF
 .endm
 
 @ abs
@@ -221,18 +222,17 @@
 @ ###########################################################################################################
 
 .macro ADC_A operand
-    mov		r2,r5			@ r2 = oldA
-    tst		r8,r8,lsr#1		@ Carry -> CPSR
-    bic 	r8,#(FLAG_N|FLAG_V|FLAG_Z|FLAG_C)
-    adc		r0,r5,\operand	@ r0 = A + operand + Carry (== result)
-    and		r5,r0,#0xFF
-    eor		\operand,\operand,r5	@ operand ^= result
-    eor		r2,r2,r5		@ r2 = oldA ^ result
-    orr		r8,r8,r0,lsr#8	@ F |= Carry ? FLAG_C : 0
-    and		r2,r2,\operand	@ r2 = (oldA ^ result) & (operand ^ result)
-    and		r2,r2,#0x80
-    orr		r8,r8,r2,lsr#1	@ F |= ((oldA ^ result) & (operand ^ result) & 0x80) ? FLAG_V : 0
-  	orr 	r12,r5,r5,lsl#8
+    tst     r8,r8,lsr#1             @ Carry -> CPSR
+    bic     r8,#(FLAG_N|FLAG_V|FLAG_Z|FLAG_C)
+    adc     r0,r5,\operand          @ r0 = A + operand + Carry (== result)
+    eor     r2,r5,r0                @ r2 = oldA ^ result
+    eor     \operand,\operand,r5    @ operand ^= result
+    orr     r8,r8,r0,lsr#8          @ F |= Carry ? FLAG_C : 0
+    and     r2,r2,\operand          @ r2 = (oldA ^ result) & (operand ^ result)
+    and     r5,r0,#0xFF
+    and     r2,r2,#0x80
+    orr     r12,r5,r5,lsl#8
+    orr     r8,r8,r2,lsr#1          @ F |= ((oldA ^ result) & (operand ^ result) & 0x80) ? FLAG_V : 0
     RETURN
 .endm
 
@@ -268,15 +268,15 @@
     bic		r8,#(FLAG_N|FLAG_Z|FLAG_C)
     tst		\val,#0x80
     mov		\val,\val,lsl#1
-    orrne	r8,r8,#FLAG_C
-    and		\val,\val,#0xFF
+    orrne	r8,r8,#FLAG_C       @ F |= (val & 0x80) ? FLAG_C : 0
+    and		\val,\val,#0xFF     @ val = (val << 1) & 0xFF
    	orr 	r12,\val,\val,lsl#8	
 .endm
 
 .macro LSRop val
     bic		r8,#(FLAG_N|FLAG_Z|FLAG_C)
-    movs	\val,\val,lsr#1
-    orrcs	r8,r8,#FLAG_C
+    movs	\val,\val,lsr#1     @ val >>= 1
+    orrcs	r8,r8,#FLAG_C       @ F |= Carry ? FLAG_C : 0
   	orr 	r12,\val,\val,lsl#8	
 .endm
 
@@ -284,16 +284,16 @@
     bic     r8,#(FLAG_N|FLAG_Z|FLAG_C)
     tst     r8,r8,lsr#1			@ Carry -> CPSR
     adc     \val,\val,\val		@ val = (val << 1) | C
-    orr     r8,r8,\val,lsr#8	@ new Carry
+    orr     r8,r8,\val,lsr#8	@ F |= (val & 0x100) ? FLAG_C : 0
     and     \val,\val,#0xFF
    	orr     r12,\val,\val,lsl#8	
 .endm
 
 .macro RORop val
-    orr		\val,\val,r8,lsl#8
+    orr		\val,\val,r8,lsl#8  @ val |= Carry ? 0x100 : 0
     bic		r8,#(FLAG_N|FLAG_Z|FLAG_C)
-    movs	\val,\val,lsr#1
-    orrcs	r8,r8,#FLAG_C
+    movs	\val,\val,lsr#1     @ val >>= 1
+    orrcs	r8,r8,#FLAG_C       @ F |= Carry ? FLAG_C : 0
     and		\val,\val,#0xFF
   	orr 	r12,\val,\val,lsl#8	
 .endm
@@ -313,9 +313,8 @@
 @ operand in r1
 .macro CMPreg reg
     bic		r8,#(FLAG_N|FLAG_Z|FLAG_C)
-    cmp		\reg,r1
+    subs    r12,\reg,r1
     orrcs	r8,r8,#FLAG_C
-    sub		r12,\reg,r1
     and     r12,r12,#0xFF	
     orr     r12,r12,r12,lsl#8
 .endm
