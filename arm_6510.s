@@ -265,12 +265,11 @@
 @ ###########################################################################################################
 
 .macro ASLop val
-    bic		r8,#(FLAG_N|FLAG_Z|FLAG_C)
-    tst		\val,#0x80
-    mov		\val,\val,lsl#1
-    orrne	r8,r8,#FLAG_C       @ F |= (val & 0x80) ? FLAG_C : 0
-    and		\val,\val,#0xFF     @ val = (val << 1) & 0xFF
-   	orr 	r12,\val,\val,lsl#8	
+    bic     r8,#(FLAG_N|FLAG_Z|FLAG_C)
+    orr     r8,r8,\val,lsr#7    @ F |= (val & 0x80) ? FLAG_C : 0
+    mov     \val,\val,lsl#1
+    and     \val,\val,#0xFF     @ val = (val << 1) & 0xFF
+    orr     r12,\val,\val,lsl#8
 .endm
 
 .macro LSRop val
@@ -295,7 +294,7 @@
     movs	\val,\val,lsr#1     @ val >>= 1
     orrcs	r8,r8,#FLAG_C       @ F |= Carry ? FLAG_C : 0
     and		\val,\val,#0xFF
-  	orr 	r12,\val,\val,lsl#8	
+    orr 	r12,\val,\val,lsl#8
 .endm
 
 @ ###########################################################################################################
