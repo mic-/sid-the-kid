@@ -89,6 +89,8 @@
 .equ OSC_STEP_SHIFT, 8
 .equ OSC_STEP, (((PAL_PHI<<(OSC_STEP_SHIFT))+(PLAYBACK_RATE/2))/PLAYBACK_RATE)
 
+.equ ARM_SWI_CPU_FAST_SET, 0xC0000
+
 .align 2
 
 .type mos6581_reset, %function
@@ -118,7 +120,7 @@ mos6581_reset:
 @ r0 = addr
 @ r1 = data
 mos6581_write:
-    str     r4,[sp,#-4]!
+	str     r4,[sp,#-4]!
 	and		r0,r0,#0x1F
 	ldr		r2,=mos6581_regs
 	ldr		r3,=prevRegValue
@@ -130,7 +132,7 @@ mos6581_write:
 	beq		.write_modevol
 	cmp		r0,#MOS6581_R_VOICE3_SR
 	@ ignore writes to the filter registers
-    ldrhi   r4,[sp],#4
+	ldrhi   r4,[sp],#4
     movhi   pc,lr
 
 	@ approximate addr/7
@@ -144,7 +146,7 @@ mos6581_write:
 	add		r2,r2,#0x20
     ldr     r4,[sp],#4
     @ Note: relies on mos6581_channel_write preserving r4
-    b       mos6581_channel_write
+	b		mos6581_channel_write
 
 .write_modevol:
 	tst		r1,#0x80	@ r3 = (data & 0x80)
@@ -255,64 +257,64 @@ mos6581_write:
 @ r0 = numSamples
 @ r1 = buffer
 mos6581_run:
-	stmfd	sp!,{r4-r12,lr}
+    stmfd	sp!,{r4-r12,lr}
 
-	@ Register usage:
-	@----------------
-	@ r2 = regs*
-	@ r3 = channel*
-	@ r4 = pos
-	@ r5 = scratch
-	@ r6 = scratch
-	@ r7 = scratch
-	@ r8 = eg->out
-	@ r9 = step
-	@ r10 = ctrl
-	@ r11 = scratch
+    @ Register usage:
+    @----------------
+    @ r2 = regs*
+    @ r3 = channel*
+    @ r4 = pos
+    @ r5 = scratch
+    @ r6 = scratch
+    @ r7 = scratch
+    @ r8 = eg->out
+    @ r9 = step
+    @ r10 = ctrl
+    @ r11 = scratch
 
-	@ clear the buffer
-	stmfd	sp!,{r0,r1}
-	mov		r2,#(1<<24)		@ DMA_SRC_FIXED
-	orr		r2,r2,r0,lsr#2
-	ldr		r0,=zero
-	swi		0xC0000
-	ldmfd	sp!,{r0,r1}
+    @ clear the buffer
+    stmfd	sp!,{r0,r1}
+    mov		r2,#(1<<24)     @ DMA_SRC_FIXED
+    orr		r2,r2,r0,lsr#2
+    ldr		r0,=zero
+    swi     ARM_SWI_CPU_FAST_SET
+    ldmfd	sp!,{r0,r1}
 
-	sub		sp,sp,#32		@ create space for some local variables
-	mov		r2,#3
-	str		r2,[sp,#8]		@ loop counter
+    sub		sp,sp,#32       @ create space for some local variables
+    mov		r2,#3
+    str		r2,[sp,#8]      @ loop counter
 	
-	ldr		r2,=mos6581_regs
-	add		r3,r2,#0x20		@ r3 = mos6581_channels
+    ldr		r2,=mos6581_regs
+    add		r3,r2,#0x20	    @ r3 = mos6581_channels
 .run_channels:
-	str		r0,[sp]			@ spill numSamples to the stack
-	str		r1,[sp,#4]		@ spill buffer to the stack	
-	ldrb	r10,[r2,#MOS6581_R_VOICE1_CTRL]
-	ldr		r4,[r3,#CHN_POS]
-	ldr		r5,[r3,#CHN_NEXT_REG_BLOCK]
-	ldrb	r6,[r5,#MOS6581_R_VOICE1_CTRL]
-	and		r6,r6,#MOS6581_VOICE_CTRL_SYNC
-	ldrb	r8,[r3,#CHN_EG_OUT]
-	bic		r10,r10,#MOS6581_VOICE_CTRL_SYNC
-	orr		r10,r10,r6
-	tst		r10,#MOS6581_VOICE_CTRL_TEST
-	movne	r9,#0
-	ldreq	r9,[r3,#CHN_STEP_SCALED]
-  
-    and r5,r10,#0xF2
-    cmp r5,#MOS6581_VOICE_CTRL_PULSE
-    beq run_samples_pulse_only
+    str     r0,[sp]	        @ spill numSamples to the stack
+    str     r1,[sp,#4]      @ spill buffer to the stack
+    ldrb    r10,[r2,#MOS6581_R_VOICE1_CTRL]
+    ldr     r4,[r3,#CHN_POS]
+    ldr     r5,[r3,#CHN_NEXT_REG_BLOCK]
+    ldrb    r6,[r5,#MOS6581_R_VOICE1_CTRL]
+    and     r6,r6,#MOS6581_VOICE_CTRL_SYNC
+    ldrb    r8,[r3,#CHN_EG_OUT]
+    bic     r10,r10,#MOS6581_VOICE_CTRL_SYNC
+    orr     r10,r10,r6
+    tst     r10,#MOS6581_VOICE_CTRL_TEST
+    movne   r9,#0
+    ldreq   r9,[r3,#CHN_STEP_SCALED]
+
+    and     r5,r10,#0xF2
+    cmp     r5,#MOS6581_VOICE_CTRL_PULSE
+    beq     run_samples_pulse_only
   
 .run_samples:
     STEP_ENVELOPE_GENERATOR
 
-    mov		r5,r4		@ oldPos = pos
-    add		r4,r4,r9	@ pos += step
+    mov     r5,r4       @ oldPos = pos
+    add     r4,r4,r9    @ pos += step
 
     @ hard sync
-    eor		r6,r4,r5	@ r6 = pos ^ oldPos
-    tst		r10,#MOS6581_VOICE_CTRL_SYNC
-    beq		.no_hard_sync
+    eor     r6,r4,r5    @ r6 = pos ^ oldPos
+    tst     r10,#MOS6581_VOICE_CTRL_SYNC
+    beq     .no_hard_sync
     tst		r6,r4
     movmi	r7,#0
     ldrmi	r6,[r3,#CHN_NEXT_CHN]
