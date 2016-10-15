@@ -281,12 +281,12 @@
 .endm
 
 .macro ROLop val
+    tst     r8,r8,lsr#1         @ Carry -> CPSR
     bic     r8,#(FLAG_N|FLAG_Z|FLAG_C)
-    tst     r8,r8,lsr#1			@ Carry -> CPSR
-    adc     \val,\val,\val		@ val = (val << 1) | C
-    orr     r8,r8,\val,lsr#8	@ F |= (val & 0x100) ? FLAG_C : 0
+    adc     \val,\val,\val      @ val = (val << 1) | C
+    orr     r8,r8,\val,lsr#8    @ F |= (val & 0x100) ? FLAG_C : 0
     and     \val,\val,#0xFF
-   	orr     r12,\val,\val,lsl#8	
+    orr     r12,\val,\val,lsl#8
 .endm
 
 .macro RORop val
