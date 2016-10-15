@@ -118,7 +118,7 @@ mos6581_reset:
 @ r0 = addr
 @ r1 = data
 mos6581_write:
-	stmfd	sp!,{r4,lr}
+    str     r4,[sp,#-4]!
 	and		r0,r0,#0x1F
 	ldr		r2,=mos6581_regs
 	ldr		r3,=prevRegValue
@@ -130,9 +130,9 @@ mos6581_write:
 	beq		.write_modevol
 	cmp		r0,#MOS6581_R_VOICE3_SR
 	@ ignore writes to the filter registers
-	ldmhifd	sp!,{r4,lr}
-	bxhi	lr
-	
+    ldrhi   r4,[sp],#4
+    movhi   pc,lr
+
 	@ approximate addr/7
 	add		r4,r0,r0,lsl#3	@ r4 = addr*9
 	add		r4,r4,#2
@@ -142,9 +142,9 @@ mos6581_write:
 	mov		r3,#SIZEOF_CHN
 	mla		r2,r4,r3,r2
 	add		r2,r2,#0x20
-	bl		mos6581_channel_write
-	ldmfd	sp!,{r4,lr}
-	bx		lr
+    ldr     r4,[sp],#4
+    @ Note: relies on mos6581_channel_write preserving r4
+    b       mos6581_channel_write
 
 .write_modevol:
 	tst		r1,#0x80	@ r3 = (data & 0x80)
@@ -152,8 +152,8 @@ mos6581_write:
 	mvneq	r3,#0       @    : 0xFFFF
 	add		r2,r2,#0x20
 	strh	r3,[r2,#(SIZEOF_CHN*2 + CHN_OUTPUT_MASK)]
-	ldmfd	sp!,{r4,lr}
-	bx		lr
+	ldr     r4,[sp],#4
+	mov     pc,lr
 .endfunc
 
 .align 2

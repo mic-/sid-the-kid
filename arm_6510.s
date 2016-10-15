@@ -351,9 +351,12 @@
 
 @ value in r1
 .macro PUSHW
-    add		r0,r11,#0xFF
-    sub		r11,r11,#2
-    strh	r1,[r3,r0]
+    mov     r2,r1,lsr#8
+    add     r0,r11,#0x100
+    strb    r2,[r3,r0]
+    sub     r11,r11,#2
+    sub     r0,r0,#1
+    strb    r1,[r3,r0]
 .endm
 	               
 .macro PULLB dest
