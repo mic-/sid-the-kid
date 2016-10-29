@@ -111,6 +111,8 @@ struct mos6581
 	uint8_t regs[MOS6581_R_FILTER_MODEVOL + 1];
 };
 
+extern uint8_t mos6581_regs[];
+
 void mos6581_reset();
 void mos6581_run(uint32_t numSamples, int8_t *buffer);
 void mos6581_write(uint32_t addr, uint8_t data);
