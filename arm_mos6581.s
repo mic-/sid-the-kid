@@ -354,13 +354,12 @@ mos6581_run:
     ldr		r7,=0xFFE
     mov		r5,r4,lsr#(11 + OSC_STEP_SHIFT)
     and		r5,r5,r7
-    tst		r10,#MOS6581_VOICE_CTRL_RMOD
-    mov   	r6,r4	
-    ldrne	r6,[r3,#CHN_PREV_CHN]
-    ldrne	r6,[r6,#CHN_POS]
-.check_tri_invert:
-	tst		r6,r6
-	eormi	r5,r5,r7
+    tst     r10,#MOS6581_VOICE_CTRL_SAW
+    ldreq   r6,[r3,#CHN_PREV_CHN]
+    ldreq   r6,[r6,#CHN_POS]
+    andeq   r6,r6,r10,lsl#(21 + OSC_STEP_SHIFT)  @ RMOD
+    eoreqs  r6,r6,r4
+    eormi   r5,r5,r7
 	
 	tst		r10,#MOS6581_VOICE_CTRL_SAW
 	andne	r5,r5,r4,lsr#(12 + OSC_STEP_SHIFT)
