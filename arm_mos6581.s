@@ -357,6 +357,7 @@ mos6581_run:
     tst     r10,#MOS6581_VOICE_CTRL_SAW
     ldreq   r6,[r3,#CHN_PREV_CHN]
     ldreq   r6,[r6,#CHN_POS]
+    mvneq   r6,r6
     andeq   r6,r6,r10,lsl#(21 + OSC_STEP_SHIFT)  @ RMOD
     eoreqs  r6,r6,r4
     eormi   r5,r5,r7
